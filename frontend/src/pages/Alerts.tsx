@@ -6,10 +6,17 @@ export default function Alerts() {
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAlert, setEditingAlert] = useState<AlertType | null>(null);
   const [newAlert, setNewAlert] = useState({
     stock_code: '',
     condition: 'above' as 'above' | 'below',
     target_price: 0,
+  });
+  const [editAlert, setEditAlert] = useState({
+    condition: 'above' as 'above' | 'below',
+    target_price: 0,
+    is_active: true,
   });
   const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
 
@@ -52,6 +59,28 @@ export default function Alerts() {
       await alertsAPI.create(newAlert);
       setShowAddModal(false);
       setNewAlert({ stock_code: '', condition: 'above', target_price: 0 });
+      fetchAlerts();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEdit = (alert: AlertType) => {
+    setEditingAlert(alert);
+    setEditAlert({
+      condition: alert.condition,
+      target_price: alert.target_price,
+      is_active: alert.is_active,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAlert = async () => {
+    if (!editingAlert) return;
+    try {
+      await alertsAPI.update(editingAlert.id, editAlert);
+      setShowEditModal(false);
+      setEditingAlert(null);
       fetchAlerts();
     } catch (err) {
       console.error(err);
@@ -149,7 +178,10 @@ export default function Alerts() {
             <tbody>
               {alerts.map((alert) => (
                 <tr key={alert.id} className="border-t">
-                  <td className="px-6 py-4 font-medium">{alert.stock_code}</td>
+                  <td className="px-6 py-4 font-medium">
+                    {alert.stock_code}
+                    {alert.stock_name && <span className="text-gray-500 ml-1">- {alert.stock_name}</span>}
+                  </td>
                   <td className="px-6 py-4">
                     {alert.condition === 'above' ? '高於' : '低於'}
                   </td>
@@ -164,6 +196,12 @@ export default function Alerts() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
+                    <a href={`/stocks/${alert.stock_code}`} className="text-green-600 hover:text-green-800 mr-3">
+                      查詢
+                    </a>
+                    <button onClick={() => handleEdit(alert)} className="text-blue-600 hover:text-blue-800 mr-3">
+                      編輯
+                    </button>
                     <button onClick={() => handleDelete(alert.id)} className="text-red-600 hover:text-red-800">
                       刪除
                     </button>
@@ -249,6 +287,69 @@ export default function Alerts() {
               </button>
               <button
                 onClick={() => setShowAddModal(false)}
+                className="flex-1 bg-gray-300 p-2 rounded hover:bg-gray-400"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h2 className="text-xl font-bold mb-4">編輯價格提醒</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">股票代碼</label>
+              <input
+                type="text"
+                value={editingAlert.stock_code}
+                disabled
+                className="w-full p-2 border rounded bg-gray-100"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">條件</label>
+              <select
+                value={editAlert.condition}
+                onChange={(e) => setEditAlert({ ...editAlert, condition: e.target.value as 'above' | 'below' })}
+                className="w-full p-2 border rounded"
+              >
+                <option value="above">價格高於</option>
+                <option value="below">價格低於</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">目標價格</label>
+              <input
+                type="number"
+                step="0.01"
+                value={editAlert.target_price || ''}
+                onChange={(e) => setEditAlert({ ...editAlert, target_price: parseFloat(e.target.value) || 0 })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editAlert.is_active}
+                  onChange={(e) => setEditAlert({ ...editAlert, is_active: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium">啟用監控</span>
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleUpdateAlert}
+                className="flex-1 bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+              >
+                儲存
+              </button>
+              <button
+                onClick={() => setShowEditModal(false)}
                 className="flex-1 bg-gray-300 p-2 rounded hover:bg-gray-400"
               >
                 取消

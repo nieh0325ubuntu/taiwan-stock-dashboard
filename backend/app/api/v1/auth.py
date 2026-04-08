@@ -16,8 +16,6 @@ from app.core.config import settings
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
-# In-memory bind code storage (code -> {chat_id, email, expires})
-# In production, use Redis
 BIND_CODES: dict = {}
 
 
@@ -51,9 +49,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     hashed_password = get_password_hash(user.password)
     new_user = User(
-        email=user.email,
-        hashed_password=get_password_hash(user.password),
-        full_name=user.full_name,
+        email=user.email, hashed_password=hashed_password, full_name=user.full_name
     )
     db.add(new_user)
     db.commit()
@@ -102,21 +98,12 @@ def bind_telegram_by_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    透過驗證碼綁定 Telegram
-
-    流程：
-    1. Bot 產生驗證碼並顯示給用戶 (使用 /bind-telegram-create-code)
-    2. 用戶在網站設定頁面輸入驗證碼
-    3. 此 API 驗證並完成綁定
-    """
     if not bind_code or len(bind_code) != 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="驗證碼格式錯誤，應為 6 位英數字",
         )
 
-    # 檢查驗證碼是否存在且匹配當前用戶 email
     valid_code = None
     data = BIND_CODES.get(bind_code)
     if data and data["email"] == current_user.email:
@@ -128,11 +115,9 @@ def bind_telegram_by_code(
             detail="驗證碼無效或已過期，請重新在 Telegram 中執行 /bind",
         )
 
-    # 綁定 chat_id 到用戶
     current_user.telegram_chat_id = valid_code
     db.commit()
 
-    # 清除已使用的驗證碼
     del BIND_CODES[bind_code]
 
     return {"message": "Telegram 綁定成功！", "telegram_chat_id": valid_code}
@@ -143,15 +128,12 @@ def create_bind_code(
     request: dict,
     db: Session = Depends(get_db),
 ):
-    """
-    Telegram Bot 呼叫此 API 產生驗證碼
-    """
     import random
     import string
     from datetime import datetime, timedelta
 
     email = request.get("email")
-    chat_id = request.get("chat_id")  # Telegram chat_id
+    chat_id = request.get("chat_id")
     if not email:
         raise HTTPException(status_code=400, detail="Email is required")
 
@@ -164,9 +146,8 @@ def create_bind_code(
 
     bind_code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
-    # Store with code as key, include chat_id
     BIND_CODES[bind_code] = {
-        "chat_id": chat_id,  # Telegram chat_id
+        "chat_id": chat_id,
         "email": email,
         "expires": datetime.utcnow() + timedelta(minutes=10),
     }
@@ -183,7 +164,6 @@ def unbind_telegram(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """解除 Telegram 綁定"""
     if not current_user.telegram_chat_id:
         return {"message": "未綁定 Telegram"}
 

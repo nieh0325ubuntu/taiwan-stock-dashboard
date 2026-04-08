@@ -13,26 +13,26 @@ router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 
 @router.get("/", response_model=List[PortfolioResponse])
 def get_portfolio(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     portfolios = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).all()
 
     result = []
     for p in portfolios:
         realtime = get_stock_realtime(p.stock_code)
-        # 只有當價格 > 0 時才視為有效現價
-        current_price = realtime["price"] if realtime and realtime.get("price", 0) > 0 else None
+        current_price = (
+            realtime["price"] if realtime and realtime.get("price", 0) > 0 else None
+        )
 
         stock_name = p.stock_name
         if not stock_name:
             stock_name = STOCK_NAMES.get(p.stock_code)
-        
+
         profit_loss = None
         profit_loss_percent = None
         days_held = None
         roi_percent = None
-        
+
         if current_price:
             profit_loss = (current_price - p.avg_price) * p.shares
             profit_loss_percent = ((current_price - p.avg_price) / p.avg_price) * 100
@@ -41,27 +41,33 @@ def get_portfolio(
             days_held = (datetime.utcnow() - p.buy_date.replace(tzinfo=None)).days
             total_cost = (p.avg_price * p.shares) + p.fee
             if total_cost > 0 and current_price:
-                roi_percent = ((current_price * p.shares - p.fee) / total_cost - 1) * 100
+                roi_percent = (
+                    (current_price * p.shares - p.fee) / total_cost - 1
+                ) * 100
 
         buy_date_str = p.buy_date.isoformat() if p.buy_date else None
-        
-        result.append(PortfolioResponse(
-            id=p.id,
-            user_id=p.user_id,
-            stock_code=p.stock_code,
-            stock_name=stock_name,
-            shares=p.shares,
-            avg_price=p.avg_price,
-            buy_date=buy_date_str,
-            fee=p.fee,
-            created_at=p.created_at,
-            updated_at=p.updated_at,
-            current_price=current_price,
-            profit_loss=round(profit_loss, 2) if profit_loss else None,
-            profit_loss_percent=round(profit_loss_percent, 2) if profit_loss_percent else None,
-            days_held=days_held,
-            roi_percent=round(roi_percent, 2) if roi_percent else None
-        ))
+
+        result.append(
+            PortfolioResponse(
+                id=p.id,
+                user_id=p.user_id,
+                stock_code=p.stock_code,
+                stock_name=stock_name,
+                shares=p.shares,
+                avg_price=p.avg_price,
+                buy_date=buy_date_str,
+                fee=p.fee,
+                created_at=p.created_at,
+                updated_at=p.updated_at,
+                current_price=current_price,
+                profit_loss=round(profit_loss, 2) if profit_loss else None,
+                profit_loss_percent=round(profit_loss_percent, 2)
+                if profit_loss_percent
+                else None,
+                days_held=days_held,
+                roi_percent=round(roi_percent, 2) if roi_percent else None,
+            )
+        )
 
     return result
 
@@ -70,21 +76,21 @@ def get_portfolio(
 def add_portfolio(
     portfolio: PortfolioCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         buy_date = None
         pd = portfolio.buy_date
         if pd and isinstance(pd, str):
             try:
-                buy_date = datetime.fromisoformat(pd.replace('Z', '+00:00'))
+                buy_date = datetime.fromisoformat(pd.replace("Z", "+00:00"))
             except:
                 buy_date = None
-        
+
         stock_name = portfolio.stock_name
         if not stock_name:
             stock_name = STOCK_NAMES.get(portfolio.stock_code)
-        
+
         new_p = Portfolio(
             user_id=current_user.id,
             stock_code=portfolio.stock_code,
@@ -92,12 +98,12 @@ def add_portfolio(
             shares=portfolio.shares,
             avg_price=portfolio.avg_price,
             buy_date=buy_date,
-            fee=portfolio.fee or 0
+            fee=portfolio.fee or 0,
         )
         db.add(new_p)
         db.commit()
         db.refresh(new_p)
-        
+
         return PortfolioResponse(
             id=new_p.id,
             user_id=new_p.user_id,
@@ -113,11 +119,12 @@ def add_portfolio(
             profit_loss=None,
             profit_loss_percent=None,
             days_held=None,
-            roi_percent=None
+            roi_percent=None,
         )
     except Exception as e:
         db.rollback()
         import traceback
+
         return {"error": str(e), "trace": traceback.format_exc()}
 
 
@@ -126,12 +133,13 @@ def update_portfolio(
     portfolio_id: int,
     portfolio_update: PortfolioUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    portfolio = db.query(Portfolio).filter(
-        Portfolio.id == portfolio_id,
-        Portfolio.user_id == current_user.id
-    ).first()
+    portfolio = (
+        db.query(Portfolio)
+        .filter(Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id)
+        .first()
+    )
 
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
@@ -154,12 +162,13 @@ def update_portfolio(
 def delete_portfolio(
     portfolio_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    portfolio = db.query(Portfolio).filter(
-        Portfolio.id == portfolio_id,
-        Portfolio.user_id == current_user.id
-    ).first()
+    portfolio = (
+        db.query(Portfolio)
+        .filter(Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id)
+        .first()
+    )
 
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
@@ -171,60 +180,58 @@ def delete_portfolio(
 
 @router.get("/export")
 def export_portfolio(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """匯出投資組合為 JSON"""
     portfolios = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).all()
-    
+
     data = []
     for p in portfolios:
-        data.append({
-            "stock_code": p.stock_code,
-            "stock_name": p.stock_name,
-            "shares": p.shares,
-            "avg_price": p.avg_price,
-            "buy_date": p.buy_date.isoformat() if p.buy_date else None,
-            "fee": p.fee
-        })
-    
+        data.append(
+            {
+                "stock_code": p.stock_code,
+                "stock_name": p.stock_name,
+                "shares": p.shares,
+                "avg_price": p.avg_price,
+                "buy_date": p.buy_date.isoformat() if p.buy_date else None,
+                "fee": p.fee,
+            }
+        )
+
     return {
         "type": "portfolio",
         "version": "1.0",
         "exported_at": datetime.utcnow().isoformat(),
         "count": len(data),
-        "data": data
+        "data": data,
     }
 
 
 @router.post("/import")
 def import_portfolio(
     import_data: dict,
-    mode: str = "merge",  # merge or replace
+    mode: str = "merge",
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """匯入投資組合"""
     try:
         if import_data.get("type") != "portfolio":
             raise HTTPException(status_code=400, detail="Invalid data format")
-        
+
         items = import_data.get("data", [])
-        
+
         if mode == "replace":
-            # 刪除現有資料
             db.query(Portfolio).filter(Portfolio.user_id == current_user.id).delete()
-        
+
         imported_count = 0
         for item in items:
             buy_date = None
             bd = item.get("buy_date")
             if bd:
                 try:
-                    buy_date = datetime.fromisoformat(bd.replace('Z', '+00:00'))
+                    buy_date = datetime.fromisoformat(bd.replace("Z", "+00:00"))
                 except:
                     buy_date = None
-            
+
             new_p = Portfolio(
                 user_id=current_user.id,
                 stock_code=item.get("stock_code"),
@@ -232,18 +239,14 @@ def import_portfolio(
                 shares=item.get("shares", 0),
                 avg_price=item.get("avg_price", 0),
                 buy_date=buy_date,
-                fee=item.get("fee", 0)
+                fee=item.get("fee", 0),
             )
             db.add(new_p)
             imported_count += 1
-        
+
         db.commit()
-        
-        return {
-            "success": True,
-            "imported": imported_count,
-            "mode": mode
-        }
+
+        return {"success": True, "imported": imported_count, "mode": mode}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))

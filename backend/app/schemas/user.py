@@ -82,6 +82,7 @@ class AlertResponse(BaseModel):
     id: int
     user_id: int
     stock_code: str
+    stock_name: Optional[str] = ""
     condition: str
     target_price: float
     is_active: bool
