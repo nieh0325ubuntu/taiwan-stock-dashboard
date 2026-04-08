@@ -80,6 +80,9 @@ export const alertsAPI = {
   create: (data: { stock_code: string; condition: string; target_price: number }) =>
     api.post('/alerts/', data),
 
+  update: (id: number, data: { condition?: string; target_price?: number; is_active?: boolean }) =>
+    api.put(`/alerts/${id}`, data),
+
   delete: (id: number) => api.delete(`/alerts/${id}`),
 
   export: () => api.get('/alerts/export'),

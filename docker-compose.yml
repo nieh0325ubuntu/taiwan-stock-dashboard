@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: stock-backend
     ports:
-      - "8001:8000"
+      - "8000:8000"
     volumes:
       - ./data:/app/data
     env_file:
@@ -45,7 +45,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
-    # 注意：Telegram Bot 需要網路存取能力
     networks:
       - default
 

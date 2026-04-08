@@ -86,6 +86,7 @@ export interface Alert {
   id: number;
   user_id: number;
   stock_code: string;
+  stock_name?: string;
   condition: 'above' | 'below';
   target_price: number;
   is_active: boolean;

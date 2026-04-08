@@ -6,20 +6,14 @@ from app.database import get_db
 from app.models.user import User, Alert
 from app.schemas.user import AlertCreate, AlertResponse
 from app.api.v1.auth import get_current_user
-from app.services.stock import get_stock_info
+from app.services.stock import get_stock_info, get_stock_realtime
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
 
 @router.get("/pending")
 def get_pending_alerts(db: Session = Depends(get_db)):
-    """
-    取得所有待檢查的價格提醒（供 Scheduler 使用）
-
-    只回傳已綁定 Telegram 且啟用中的提醒，並附上現價
-    """
-    from app.services.stock import get_stock_info
-
+    """取得所有待檢查的價格提醒（供 Scheduler 使用）"""
     alerts = (
         db.query(Alert)
         .filter(Alert.is_active == True)
@@ -77,7 +71,27 @@ def get_alerts(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     alerts = db.query(Alert).filter(Alert.user_id == current_user.id).all()
-    return alerts
+
+    result = []
+    for alert in alerts:
+        stock_data = get_stock_info(alert.stock_code)
+        stock_name = stock_data.get("name", "") if stock_data else ""
+
+        result.append(
+            AlertResponse(
+                id=alert.id,
+                user_id=alert.user_id,
+                stock_code=alert.stock_code,
+                stock_name=stock_name,
+                condition=alert.condition,
+                target_price=alert.target_price,
+                is_active=alert.is_active,
+                triggered_at=alert.triggered_at,
+                created_at=alert.created_at,
+            )
+        )
+
+    return result
 
 
 @router.post("/", response_model=AlertResponse, status_code=201)
@@ -123,6 +137,54 @@ def delete_alert(
     return None
 
 
+@router.put("/{alert_id}", response_model=AlertResponse)
+def update_alert(
+    alert_id: int,
+    alert_update: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    alert = (
+        db.query(Alert)
+        .filter(Alert.id == alert_id, Alert.user_id == current_user.id)
+        .first()
+    )
+
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    if "condition" in alert_update:
+        if alert_update["condition"] not in ["above", "below"]:
+            raise HTTPException(
+                status_code=400, detail="Condition must be 'above' or 'below'"
+            )
+        alert.condition = alert_update["condition"]
+
+    if "target_price" in alert_update:
+        alert.target_price = alert_update["target_price"]
+
+    if "is_active" in alert_update:
+        alert.is_active = alert_update["is_active"]
+
+    db.commit()
+    db.refresh(alert)
+
+    stock_data = get_stock_info(alert.stock_code)
+    stock_name = stock_data.get("name", "") if stock_data else ""
+
+    return {
+        "id": alert.id,
+        "user_id": alert.user_id,
+        "stock_code": alert.stock_code,
+        "stock_name": stock_name,
+        "condition": alert.condition,
+        "target_price": alert.target_price,
+        "is_active": alert.is_active,
+        "triggered_at": alert.triggered_at,
+        "created_at": alert.created_at,
+    }
+
+
 @router.post("/{alert_id}/trigger", status_code=200)
 def trigger_alert(alert_id: int, db: Session = Depends(get_db)):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
@@ -146,7 +208,6 @@ def trigger_alert(alert_id: int, db: Session = Depends(get_db)):
         alert.triggered_at = datetime.utcnow()
         db.commit()
 
-        # 發送 Telegram 通知
         from app.services.alerts_scheduler import send_telegram_message
 
         if alert.user.telegram_chat_id:
@@ -194,7 +255,7 @@ def export_alerts(
 @router.post("/import")
 def import_alerts(
     import_data: dict,
-    mode: str = "merge",  # merge or replace
+    mode: str = "merge",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -206,7 +267,6 @@ def import_alerts(
         items = import_data.get("data", [])
 
         if mode == "replace":
-            # 刪除現有資料
             db.query(Alert).filter(Alert.user_id == current_user.id).delete()
 
         imported_count = 0

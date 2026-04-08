@@ -2,6 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+<<<<<<< HEAD
 # 安裝依賴
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -14,3 +15,13 @@ RUN mkdir -p /app/data
 
 # 啟動
 CMD ["python", "main.py"]
+=======
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+RUN mkdir -p /app/data
+
+CMD ["python", "main.py"]
+>>>>>>> origin/main

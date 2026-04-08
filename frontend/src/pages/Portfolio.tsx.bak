@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useState, useMemo } from 'react';
 import { portfolioAPI, stocksAPI } from '../services/api';
 import { Portfolio as PortfolioType, StockSearchResult } from '../types';
@@ -5,14 +6,23 @@ import { Portfolio as PortfolioType, StockSearchResult } from '../types';
 type SortField = 'stock_code' | 'shares' | 'avg_price' | 'buy_date' | 'current_price' | 'roi_percent' | 'profit_loss_percent';
 type SortDirection = 'asc' | 'desc';
 
+=======
+import { useEffect, useState } from 'react';
+import { portfolioAPI, stocksAPI } from '../services/api';
+import { Portfolio as PortfolioType, StockSearchResult } from '../types';
+
+>>>>>>> origin/main
 export default function Portfolio() {
   const [portfolios, setPortfolios] = useState<PortfolioType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+<<<<<<< HEAD
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPortfolio, setEditingPortfolio] = useState<PortfolioType | null>(null);
   const [sortField, setSortField] = useState<SortField>('stock_code');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+=======
+>>>>>>> origin/main
   const [newPortfolio, setNewPortfolio] = useState({
     stock_code: '',
     stock_name: '',
@@ -57,6 +67,7 @@ export default function Portfolio() {
   };
 
   const handleAddPortfolio = async () => {
+    console.log('Adding portfolio:', newPortfolio);
     if (!newPortfolio.stock_code || newPortfolio.shares <= 0 || newPortfolio.avg_price <= 0) {
       alert('請填寫股票代碼、股數和均價');
       return;
@@ -71,7 +82,9 @@ export default function Portfolio() {
       if (newPortfolio.buy_date) data.buy_date = newPortfolio.buy_date;
       if (newPortfolio.fee > 0) data.fee = newPortfolio.fee;
       
-      await portfolioAPI.add(data);
+      console.log('Sending data:', JSON.stringify(data));
+      const res = await portfolioAPI.add(data);
+      console.log('Response:', res);
       setShowAddModal(false);
       setNewPortfolio({ stock_code: '', stock_name: '', shares: 0, avg_price: 0, buy_date: '', fee: 0 });
       fetchPortfolios();
@@ -92,6 +105,7 @@ export default function Portfolio() {
     }
   };
 
+<<<<<<< HEAD
   const handleEdit = (portfolio: PortfolioType) => {
     setEditingPortfolio(portfolio);
     setShowEditModal(true);
@@ -155,11 +169,14 @@ export default function Portfolio() {
     e.target.value = '';
   };
 
+=======
+>>>>>>> origin/main
   const totalValue = portfolios.reduce((sum, p) => sum + (p.current_price || p.avg_price) * p.shares, 0);
   const totalCost = portfolios.reduce((sum, p) => sum + p.avg_price * p.shares + p.fee, 0);
   const totalProfitLoss = totalValue - totalCost;
   const profitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 
+<<<<<<< HEAD
   const sortedPortfolios = useMemo(() => {
     return [...portfolios].sort((a, b) => {
       let aVal: any;
@@ -213,12 +230,15 @@ export default function Portfolio() {
     }
   };
 
+=======
+>>>>>>> origin/main
   if (loading) return <div>載入中...</div>;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">投資組合</h1>
+<<<<<<< HEAD
         <div className="flex gap-2 items-center">
           <select
             value={sortField}
@@ -256,26 +276,50 @@ export default function Portfolio() {
             新增持仓
           </button>
         </div>
+=======
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          新增持仓
+        </button>
+>>>>>>> origin/main
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-500">總市值</div>
+<<<<<<< HEAD
           <div className="text-2xl font-bold">${totalValue.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-500">總成本(含手續費)</div>
           <div className="text-2xl font-bold">${totalCost.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+=======
+          <div className="text-2xl font-bold">${totalValue.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="text-sm text-gray-500">總成本(含手續費)</div>
+          <div className="text-2xl font-bold">${totalCost.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>
+>>>>>>> origin/main
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-500">總損益</div>
           <div className={`text-2xl font-bold ${totalProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+<<<<<<< HEAD
             {totalProfitLoss >= 0 ? '+' : ''}{totalProfitLoss.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({profitLossPercent.toFixed(2)}%)
+=======
+            {totalProfitLoss >= 0 ? '+' : ''}{totalProfitLoss.toLocaleString('zh-TW', { maximumFractionDigits: 0 })} ({profitLossPercent.toFixed(2)}%)
+>>>>>>> origin/main
           </div>
         </div>
       </div>
 
+<<<<<<< HEAD
       {sortedPortfolios.length === 0 ? (
+=======
+      {portfolios.length === 0 ? (
+>>>>>>> origin/main
         <div className="text-center text-gray-500 py-12">尚未新增任何持仓</div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -295,11 +339,15 @@ export default function Portfolio() {
               </tr>
             </thead>
             <tbody>
+<<<<<<< HEAD
               {sortedPortfolios.map((p) => {
+=======
+              {portfolios.map((p) => {
+>>>>>>> origin/main
                 const value = (p.current_price || p.avg_price) * p.shares;
-                const totalCostItem = p.avg_price * p.shares + p.fee;
-                const roi = totalCostItem > 0 && p.current_price 
-                  ? ((p.current_price * p.shares - p.fee) / totalCostItem - 1) * 100 
+                const totalCost = p.avg_price * p.shares + p.fee;
+                const roi = totalCost > 0 && p.current_price 
+                  ? ((p.current_price * p.shares - p.fee) / totalCost - 1) * 100 
                   : null;
                 return (
                   <tr key={p.id} className="border-t">
@@ -308,19 +356,30 @@ export default function Portfolio() {
                       {p.stock_name && <div className="text-sm text-gray-500">{p.stock_name}</div>}
                     </td>
                     <td className="px-4 py-4 text-right">{p.shares}</td>
+<<<<<<< HEAD
                     <td className="px-4 py-4 text-right">{p.avg_price.toFixed(2)}</td>
                     <td className="px-4 py-4 text-right">{p.fee.toFixed(2)}</td>
                     <td className="px-4 py-4 text-center">{p.buy_date ? p.buy_date.split('T')[0] : '-'}</td>
                     <td className="px-4 py-4 text-right">{p.current_price ? p.current_price.toFixed(2) : '-'}</td>
                     <td className="px-4 py-4 text-right">${value.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+=======
+                    <td className="px-4 py-4 text-right">{p.avg_price}</td>
+                    <td className="px-4 py-4 text-right">{p.fee}</td>
+                    <td className="px-4 py-4 text-center">{p.buy_date ? p.buy_date.split('T')[0] : '-'}</td>
+                    <td className="px-4 py-4 text-right">{p.current_price || '-'}</td>
+                    <td className="px-4 py-4 text-right">${value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</td>
+>>>>>>> origin/main
                     <td className="px-4 py-4 text-center">{p.days_held !== null ? p.days_held + '天' : '-'}</td>
                     <td className={`px-4 py-4 text-right ${(roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {roi !== null ? `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%` : '-'}
                     </td>
                     <td className="px-4 py-4 text-center">
+<<<<<<< HEAD
                       <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-800 mr-3">
                         編輯
                       </button>
+=======
+>>>>>>> origin/main
                       <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800">
                         刪除
                       </button>
@@ -431,6 +490,7 @@ export default function Portfolio() {
           </div>
         </div>
       )}
+<<<<<<< HEAD
 
       {showEditModal && editingPortfolio && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -503,6 +563,8 @@ export default function Portfolio() {
           </div>
         </div>
       )}
+=======
+>>>>>>> origin/main
     </div>
   );
 }
