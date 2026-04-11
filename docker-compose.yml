@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: stock-backend
     ports:
-      - "8000:8000"
+      - "1681:8000"
     volumes:
       - ./data:/app/data
     env_file:
@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: stock-frontend
     ports:
-      - "3000:80"
+      - "1680:80"
     depends_on:
       - backend
     restart: unless-stopped
