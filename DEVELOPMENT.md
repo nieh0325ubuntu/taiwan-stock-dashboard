@@ -150,7 +150,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 
 # Frontend
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:1681
 ```
 
 ## 啟動方式
@@ -160,8 +160,8 @@ cd taiwan-stock-dashboard
 docker compose up -d
 ```
 
-- 前端: http://localhost:3000
-- 後端 API: http://localhost:8000
+- 前端: http://localhost:1680
+- 後端 API: http://localhost:1681
 
 ## 已修復問題清單
 

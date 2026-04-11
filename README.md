@@ -47,8 +47,8 @@ docker-compose up -d
 
 ### 4. 訪問應用
 
-- 前端：http://localhost:3000
-- 後端 API：http://localhost:8000
+- 前端：http://localhost:1680
+- 後端 API：http://localhost:1681
 
 ## 專案結構
 
