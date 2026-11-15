@@ -26,7 +26,9 @@ def get_pending_alerts(db: Session = Depends(get_db)):
     for alert in alerts:
         stock_data = get_stock_info(alert.stock_code)
         current_price = (
-            stock_data["price"] if stock_data and stock_data.get("price", 0) > 0 else 0
+            stock_data.get("price", 0)
+            if stock_data and stock_data.get("price", 0) > 0
+            else 0
         )
 
         result.append(

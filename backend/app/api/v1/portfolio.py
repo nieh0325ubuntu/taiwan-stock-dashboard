@@ -125,7 +125,7 @@ def add_portfolio(
         db.rollback()
         import traceback
 
-        return {"error": str(e), "trace": traceback.format_exc()}
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/{portfolio_id}", response_model=PortfolioResponse)
@@ -155,7 +155,56 @@ def update_portfolio(
 
     db.commit()
     db.refresh(portfolio)
-    return portfolio
+
+    realtime = get_stock_realtime(portfolio.stock_code)
+    current_price = (
+        realtime["price"] if realtime and realtime.get("price", 0) > 0 else None
+    )
+
+    stock_name = portfolio.stock_name
+    if not stock_name:
+        stock_name = STOCK_NAMES.get(portfolio.stock_code)
+
+    profit_loss = None
+    profit_loss_percent = None
+    days_held = None
+    roi_percent = None
+
+    if current_price:
+        profit_loss = (current_price - portfolio.avg_price) * portfolio.shares
+        profit_loss_percent = (
+            (current_price - portfolio.avg_price) / portfolio.avg_price
+        ) * 100
+
+    if portfolio.buy_date:
+        days_held = (datetime.utcnow() - portfolio.buy_date.replace(tzinfo=None)).days
+        total_cost = (portfolio.avg_price * portfolio.shares) + portfolio.fee
+        if total_cost > 0 and current_price:
+            roi_percent = (
+                (current_price * portfolio.shares - portfolio.fee) / total_cost - 1
+            ) * 100
+
+    buy_date_str = portfolio.buy_date.isoformat() if portfolio.buy_date else None
+
+    return PortfolioResponse(
+        id=portfolio.id,
+        user_id=portfolio.user_id,
+        stock_code=portfolio.stock_code,
+        stock_name=stock_name,
+        shares=portfolio.shares,
+        avg_price=portfolio.avg_price,
+        buy_date=buy_date_str,
+        fee=portfolio.fee,
+        created_at=portfolio.created_at,
+        updated_at=portfolio.updated_at,
+        current_price=current_price,
+        profit_loss=round(profit_loss, 2) if profit_loss else None,
+        profit_loss_percent=round(profit_loss_percent, 2)
+        if profit_loss_percent
+        else None,
+        days_held=days_held,
+        roi_percent=round(roi_percent, 2) if roi_percent else None,
+    )
 
 
 @router.delete("/{portfolio_id}", status_code=204)
