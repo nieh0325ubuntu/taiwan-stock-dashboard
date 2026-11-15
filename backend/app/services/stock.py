@@ -532,6 +532,61 @@ def get_stock_historical(stock_code: str, days: int = 90) -> List[Dict]:
     return data
 
 
+def calculate_rsi(prices: List[float], period: int = 14) -> float:
+    """計算 RSI (相對強弱指標)"""
+    if len(prices) < period + 1:
+        return 50.0
+
+    deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
+    gains = [d if d > 0 else 0 for d in deltas]
+    losses = [-d if d < 0 else 0 for d in deltas]
+
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+
+    if avg_loss == 0:
+        return 100.0
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return round(rsi, 2)
+
+
+def calculate_kd(history: List[Dict], period: int = 9) -> tuple:
+    """計算 KD 指標 (K, D)，使用隨機震盪指標算法"""
+    if len(history) < period:
+        return 50.0, 50.0
+
+    prev_k = 50.0
+    prev_d = 50.0
+    final_k = 50.0
+    final_d = 50.0
+
+    for i in range(period - 1, len(history)):
+        window = history[i - period + 1 : i + 1]
+        highs = [h["high"] for h in window]
+        lows = [h["low"] for h in window]
+        close = history[i]["close"]
+
+        highest = max(highs)
+        lowest = min(lows)
+
+        if highest == lowest:
+            rsv = 50.0
+        else:
+            rsv = (close - lowest) / (highest - lowest) * 100
+
+        k = (prev_k * 2 + rsv) / 3
+        d = (prev_d * 2 + k) / 3
+
+        final_k = k
+        final_d = d
+        prev_k = k
+        prev_d = d
+
+    return round(final_k, 2), round(final_d, 2)
+
+
 def get_stock_indicators(stock_code: str) -> Optional[Dict]:
     history = fetch_yfinance_historical(stock_code, 60)
     price = 0
@@ -562,6 +617,13 @@ def get_stock_indicators(stock_code: str) -> Optional[Dict]:
     else:
         ma60 = price * 0.95
 
+    # 計算 RSI (14)
+    closes = [h["close"] for h in history] if history else [price]
+    rsi = calculate_rsi(closes, 14) if len(closes) > 14 else 50.0
+
+    # 計算 KD (9)
+    kd_k, kd_d = calculate_kd(history, 9) if len(history) >= 9 else (50.0, 50.0)
+
     twse_name = fetch_twse_name(stock_code)
     stock_name = twse_name or STOCK_NAMES.get(stock_code, f"股票{stock_code}")
 
@@ -573,8 +635,8 @@ def get_stock_indicators(stock_code: str) -> Optional[Dict]:
         "ma10": round(ma10, 2),
         "ma20": round(ma20, 2),
         "ma60": round(ma60, 2),
-        "rsi": 55,
-        "kd_k": 65,
-        "kd_d": 60,
+        "rsi": rsi,
+        "kd_k": kd_k,
+        "kd_d": kd_d,
         "updated": datetime.now().isoformat(),
     }
